@@ -8,7 +8,9 @@
     "start": "ts-node src/cli.ts",
     "demo": "ts-node src/demo.ts",
     "demo:parallel": "ts-node src/demo-parallel.ts",
-    "demo:mcp": "ts-node src/demo-mcp.ts"
+    "demo:mcp": "ts-node src/demo-mcp.ts",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [
     "ollama",
@@ -26,7 +28,10 @@
     "ollama": "^0.5.14"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.14.9",
+    "jest": "^30.5.1",
+    "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.2"
   }
