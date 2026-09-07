@@ -58,4 +58,12 @@ describe('SkillRegistry Full Coverage (Unit Tests)', () => {
     expect(prompt).toContain('Garantiza 100% de cobertura de pruebas.');
     expect(prompt).toContain('REGLAS DE ACTUACIÓN:');
   });
+
+  it('should handle empty skillsDir fallback gracefully when getting prompt', () => {
+    const registry = new SkillRegistry('/tmp/non_existent_folder_xyz_123');
+    // Force skillsDir to be empty string to test line 26-27
+    (registry as any).skillsDir = '';
+    const content = registry.getSkillPrompt('any-skill');
+    expect(content).toBe('[Skill any-skill loaded as standard role capability]');
+  });
 });

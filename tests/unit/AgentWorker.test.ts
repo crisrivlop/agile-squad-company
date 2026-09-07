@@ -1,4 +1,4 @@
-﻿import { AgentWorker } from '../../src/AgentWorker';
+import { AgentWorker } from '../../src/AgentWorker';
 import { SkillRegistry } from '../../src/SkillRegistry';
 import { McpClientManager } from '../../src/McpClientManager';
 import ollama from 'ollama';
@@ -83,5 +83,26 @@ describe('AgentWorker & ReAct Loop (Unit Tests with Mocks)', () => {
     expect(result.output).toBe('El valor de PI en el archivo es 3.14');
     expect(mockMcp.callTool).toHaveBeenCalledWith('read_text_file', { path: 'src/math.ts' });
     expect(ollama.chat).toHaveBeenCalledTimes(2);
+  });
+
+  it('should handle tool call when worker has no mcpManager configured', async () => {
+    (ollama.chat as jest.Mock)
+      .mockResolvedValueOnce({
+        message: {
+          role: 'assistant',
+          content: '',
+          tool_calls: [{ function: { name: 'unsupported_tool', arguments: {} } }]
+        }
+      })
+      .mockResolvedValueOnce({
+        message: { role: 'assistant', content: 'No tools available' }
+      });
+
+    // Worker without mcpManager
+    const worker = new AgentWorker(baseConfig, mockRegistry);
+    const result = await worker.executeTask('Ejecuta herramienta sin MCP');
+
+    expect(result.success).toBe(true);
+    expect(result.output).toBe('No tools available');
   });
 });

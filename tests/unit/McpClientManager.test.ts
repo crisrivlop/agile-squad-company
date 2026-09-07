@@ -25,4 +25,14 @@ describe('McpClientManager Unit & Error Handling Tests', () => {
 
     await manager.disconnect();
   });
+
+  it('should auto-connect if getAvailableTools or callTool are called without manual connect', async () => {
+    const workspacePath = path.resolve(__dirname, '../../');
+    const manager = new McpClientManager(workspacePath);
+    // Notice: manager.connect() is NOT called explicitly
+    const tools = await manager.getAvailableTools();
+    expect(tools.length).toBeGreaterThanOrEqual(1);
+
+    await manager.disconnect();
+  });
 });
