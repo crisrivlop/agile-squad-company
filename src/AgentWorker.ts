@@ -1,4 +1,5 @@
 ﻿import ollama from 'ollama';
+import { GoogleGenAI } from '@google/genai';
 import { AgentRoleConfig, AgentExecutionResult } from './types';
 import { SkillRegistry } from './SkillRegistry';
 import { McpClientManager } from './McpClientManager';
@@ -8,11 +9,18 @@ export class AgentWorker {
   private skillRegistry: SkillRegistry;
   private systemPrompt: string;
   private mcpManager?: McpClientManager;
+  private geminiClient?: GoogleGenAI;
 
-  constructor(config: AgentRoleConfig, skillRegistry: SkillRegistry, mcpManager?: McpClientManager) {
+  constructor(
+    config: AgentRoleConfig,
+    skillRegistry: SkillRegistry,
+    mcpManager?: McpClientManager,
+    geminiClient?: GoogleGenAI
+  ) {
     this.config = config;
     this.skillRegistry = skillRegistry;
     this.mcpManager = mcpManager;
+    this.geminiClient = geminiClient;
     this.systemPrompt = this.skillRegistry.buildSystemPrompt(
       config.roleId,
       config.name,
@@ -22,9 +30,51 @@ export class AgentWorker {
   }
 
   public async executeTask(taskPrompt: string, overrideModel?: string): Promise<AgentExecutionResult> {
+    const provider = this.config.provider || 'ollama';
     const model = overrideModel || this.config.defaultModel;
     const timestamp = new Date().toISOString();
 
+    if (provider === 'gemini') {
+      return await this.executeWithGemini(taskPrompt, model, timestamp);
+    }
+
+    return await this.executeWithOllama(taskPrompt, model, timestamp);
+  }
+
+  private async executeWithGemini(taskPrompt: string, model: string, timestamp: string): Promise<AgentExecutionResult> {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      const ai = this.geminiClient || new GoogleGenAI(apiKey ? { apiKey } : {});
+
+      const response = await ai.models.generateContent({
+        model: model,
+        contents: taskPrompt,
+        config: {
+          systemInstruction: this.systemPrompt
+        }
+      });
+
+      return {
+        roleId: this.config.roleId,
+        agentName: this.config.name,
+        modelUsed: `gemini:${model}`,
+        success: true,
+        output: response.text || '',
+        timestamp
+      };
+    } catch (error) {
+      return {
+        roleId: this.config.roleId,
+        agentName: this.config.name,
+        modelUsed: `gemini:${model}`,
+        success: false,
+        output: `Error executing task with Gemini model [${model}]: ${(error as Error).message}`,
+        timestamp
+      };
+    }
+  }
+
+  private async executeWithOllama(taskPrompt: string, model: string, timestamp: string): Promise<AgentExecutionResult> {
     try {
       const messages: any[] = [
         { role: 'system', content: this.systemPrompt },

@@ -55,10 +55,11 @@ ${baseDirectives}
 TUS HABILIDADES Y PROCEDIMIENTOS INYECTADOS (SKILLS):
 ${loadedSkills}
 
-REGLAS DE ACTUACIÓN:
+REGLAS DE ACTUACIÓN Y EFICIENCIA DE SALIDA:
 1. Respeta fielmente los procedimientos de tus Skills asignados.
 2. Aplica Clean Code, Early Returns, y separación estricta de responsabilidades.
-3. Sé preciso, profesional, sin rodeos y enfocado en entregar valor verificable.
-4. Genera entregables concretos listos para el siguiente agente del Squad.`;
+3. ZERO CONVERSATIONAL FILLER: Prohibido incluir prefacios, saludos, introducciones o resúmenes de cierre. Ve directo al entregable técnico.
+4. SURGICAL ATOMIC OUTPUT: Si generas código para un archivo existente, devuelve únicamente el bloque específico o diff, jamás el archivo completo repetido.
+5. Sé preciso, profesional, sin rodeos y enfocado en entregar valor verificable con máxima densidad de información por token.`;
   }
 }

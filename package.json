@@ -23,6 +23,7 @@
   "author": "crisrivlop",
   "license": "MIT",
   "dependencies": {
+    "@google/genai": "^2.21.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@modelcontextprotocol/server-filesystem": "^2026.8.31",
     "ollama": "^0.5.14"

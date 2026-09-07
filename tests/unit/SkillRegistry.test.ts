@@ -56,7 +56,8 @@ describe('SkillRegistry Full Coverage (Unit Tests)', () => {
     expect(prompt).toContain('QA Lead Sentinel');
     expect(prompt).toContain('qa_lead');
     expect(prompt).toContain('Garantiza 100% de cobertura de pruebas.');
-    expect(prompt).toContain('REGLAS DE ACTUACIÓN:');
+    expect(prompt).toContain('REGLAS DE ACTUACIÓN Y EFICIENCIA DE SALIDA:');
+    expect(prompt).toContain('ZERO CONVERSATIONAL FILLER');
   });
 
   it('should handle empty skillsDir fallback gracefully when getting prompt', () => {

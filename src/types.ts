@@ -1,7 +1,8 @@
-﻿export interface AgentRoleConfig {
+export interface AgentRoleConfig {
   roleId: string;
   name: string;
   defaultModel: string;
+  provider?: 'ollama' | 'gemini';
   requiredSkills: string[];
   systemPromptBase: string;
 }
