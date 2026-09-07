@@ -66,4 +66,36 @@ describe('SkillRegistry Full Coverage (Unit Tests)', () => {
     const content = registry.getSkillPrompt('any-skill');
     expect(content).toBe('[Skill any-skill loaded as standard role capability]');
   });
+
+  it('should set skillsDir to empty string when neither local nor global exists', () => {
+    const mockResolver = {
+      exists: (p: string) => false
+    };
+
+    const registry = new SkillRegistry(undefined, mockResolver);
+    expect((registry as any).skillsDir).toBe('');
+  });
+
+  it('should resolve to globalPath when localRepoPath does not exist but global does', () => {
+    const mockResolver = {
+      exists: (p: string) => p.includes('.gemini')
+    };
+
+    const registry = new SkillRegistry(undefined, mockResolver);
+    expect((registry as any).skillsDir).toContain('.gemini');
+  });
+
+  it('should handle undefined process.env.USERPROFILE gracefully', () => {
+    const origUserProfile = process.env.USERPROFILE;
+    delete process.env.USERPROFILE;
+
+    const mockResolver = {
+      exists: (p: string) => false
+    };
+
+    const registry = new SkillRegistry(undefined, mockResolver);
+    expect((registry as any).skillsDir).toBe('');
+
+    process.env.USERPROFILE = origUserProfile;
+  });
 });

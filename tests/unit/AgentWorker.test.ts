@@ -30,6 +30,13 @@ describe('AgentWorker & ReAct Loop (Unit Tests with Mocks)', () => {
     expect(result.success).toBe(true);
     expect(result.output).toBe('Codigo generado con exito');
     expect(result.modelUsed).toBe('qwen2.5-coder:latest');
+
+    // Test overrideModel branch
+    (ollama.chat as jest.Mock).mockResolvedValueOnce({
+      message: { role: 'assistant', content: 'Respuesta con gemma4' }
+    });
+    const overrideRes = await worker.executeTask('Genera con gemma', 'gemma4:e2b');
+    expect(overrideRes.modelUsed).toBe('gemma4:e2b');
   });
 
   it('should handle Ollama chat error gracefully', async () => {
@@ -104,5 +111,30 @@ describe('AgentWorker & ReAct Loop (Unit Tests with Mocks)', () => {
 
     expect(result.success).toBe(true);
     expect(result.output).toBe('No tools available');
+  });
+
+  it('should handle tool call when tool result has no content property', async () => {
+    const mockMcpNoContent = {
+      getAvailableTools: jest.fn().mockResolvedValue([]),
+      callTool: jest.fn().mockResolvedValue({ status: 'ok', rawResult: 42 })
+    } as unknown as McpClientManager;
+
+    (ollama.chat as jest.Mock)
+      .mockResolvedValueOnce({
+        message: {
+          role: 'assistant',
+          content: '',
+          tool_calls: [{ function: { name: 'calc_tool', arguments: {} } }]
+        }
+      })
+      .mockResolvedValueOnce({
+        message: { role: 'assistant', content: 'Calculo terminado' }
+      });
+
+    const worker = new AgentWorker(baseConfig, mockRegistry, mockMcpNoContent);
+    const result = await worker.executeTask('Calcula algo');
+
+    expect(result.success).toBe(true);
+    expect(result.output).toBe('Calculo terminado');
   });
 });

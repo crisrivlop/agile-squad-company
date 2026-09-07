@@ -1,11 +1,13 @@
-﻿import * as fs from 'fs';
+import * as fs from 'fs';
 import * as path from 'path';
 
 export class SkillRegistry {
   private skillsDir: string;
 
-  constructor(customSkillsDir?: string) {
-    if (customSkillsDir && fs.existsSync(customSkillsDir)) {
+  constructor(customSkillsDir?: string, pathResolver?: { exists: (p: string) => boolean }) {
+    const checker = pathResolver ? pathResolver.exists : fs.existsSync;
+
+    if (customSkillsDir && checker(customSkillsDir)) {
       this.skillsDir = customSkillsDir;
       return;
     }
@@ -13,9 +15,9 @@ export class SkillRegistry {
     const localRepoPath = path.resolve(__dirname, '../../agile-squad-skills/skills');
     const globalPath = path.join(process.env.USERPROFILE || '', '.gemini/config/skills');
 
-    if (fs.existsSync(localRepoPath)) {
+    if (checker(localRepoPath)) {
       this.skillsDir = localRepoPath;
-    } else if (fs.existsSync(globalPath)) {
+    } else if (checker(globalPath)) {
       this.skillsDir = globalPath;
     } else {
       this.skillsDir = '';

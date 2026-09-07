@@ -1,4 +1,4 @@
-﻿import { CompanyOrchestrator } from '../../src/CompanyOrchestrator';
+import { CompanyOrchestrator } from '../../src/CompanyOrchestrator';
 import ollama from 'ollama';
 
 jest.mock('ollama');
@@ -59,5 +59,51 @@ describe('CompanyOrchestrator Pipelines & Parallel Dispatch (Unit Tests)', () =>
       workspaceRoot: 'C:\\test'
     });
     expect(company).toBeDefined();
+  });
+
+  it('should run pipeline gracefully even if some roles are missing from squad', async () => {
+    (ollama.chat as jest.Mock)
+      .mockResolvedValueOnce({ message: { role: 'assistant', content: 'Backend code only' } })
+      .mockResolvedValueOnce({ message: { role: 'assistant', content: 'Frontend code only' } });
+
+    // Instantiating with ONLY devs (no PO, no Arch, no Integrator, no QA)
+    const partialCompany = new CompanyOrchestrator({
+      includeRoles: ['backend_developer', 'frontend_developer']
+    });
+
+    const res = await partialCompany.runParallelDevPipeline('Feature sin PO ni QA');
+    expect(res['3_backend_developer']).toBe('Backend code only');
+    expect(res['3_frontend_developer']).toBe('Frontend code only');
+    expect(res['1_product_owner']).toBeUndefined();
+    expect(res['2_tech_architect']).toBeUndefined();
+  });
+
+  it('should accept custom workers in options', () => {
+    const company = new CompanyOrchestrator({
+      customWorkers: [
+        {
+          roleId: 'custom_secops',
+          name: 'Custom SecOps Specialist',
+          defaultModel: 'qwen2.5-coder:latest',
+          requiredSkills: [],
+          systemPromptBase: 'Base SecOps'
+        }
+      ]
+    });
+
+    expect(company.getWorker('custom_secops')).toBeDefined();
+  });
+
+  it('should fallback to empty string if parallel dev outputs are undefined', async () => {
+    const company = new CompanyOrchestrator({
+      includeRoles: ['backend_developer', 'frontend_developer']
+    });
+
+    // Mock executeInParallel to return empty array
+    jest.spyOn(company, 'executeInParallel').mockResolvedValueOnce([]);
+
+    const res = await company.runParallelDevPipeline('Test empty parallel output');
+    expect(res['3_backend_developer']).toBe('');
+    expect(res['3_frontend_developer']).toBe('');
   });
 });
