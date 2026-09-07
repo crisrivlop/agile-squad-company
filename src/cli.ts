@@ -1,4 +1,4 @@
-﻿import * as readline from 'readline';
+import * as readline from 'readline';
 import { CompanyOrchestrator } from './CompanyOrchestrator';
 
 async function main() {
@@ -19,7 +19,7 @@ async function main() {
     }
 
     try {
-      await company.runFeaturePipeline(input.trim());
+      await company.runParallelDevPipeline(input.trim());
     } catch (err) {
       console.error('Error en pipeline:', err);
     } finally {
