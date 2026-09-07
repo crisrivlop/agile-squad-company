@@ -1,0 +1,29 @@
+﻿{
+  "name": "agile-squad-company",
+  "version": "1.0.0",
+  "description": "Multi-agent autonomous AI software company powered by Ollama and Agile Squad MCP",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/cli.ts",
+    "demo": "ts-node src/demo.ts"
+  },
+  "keywords": [
+    "ollama",
+    "multi-agent",
+    "mcp",
+    "agile-squad",
+    "autonomous-company",
+    "ai-developers"
+  ],
+  "author": "crisrivlop",
+  "license": "MIT",
+  "dependencies": {
+    "ollama": "^0.5.14"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.2"
+  }
+}
