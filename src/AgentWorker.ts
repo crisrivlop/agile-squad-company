@@ -1,4 +1,4 @@
-﻿import ollama from 'ollama';
+import ollama from 'ollama';
 import { GoogleGenAI } from '@google/genai';
 import { AgentRoleConfig, AgentExecutionResult } from './types';
 import { SkillRegistry } from './SkillRegistry';
@@ -27,6 +27,33 @@ export class AgentWorker {
       config.requiredSkills,
       config.systemPromptBase
     );
+  }
+
+  /**
+   * Configures or re-configures Gemini provider dynamically at runtime.
+   * Can update the apiKey, model, or pass a custom GoogleGenAI client instance.
+   */
+  public configureGemini(options: { apiKey?: string; model?: string; client?: GoogleGenAI }): void {
+    if (options.client) {
+      this.geminiClient = options.client;
+    } else if (options.apiKey) {
+      this.geminiClient = new GoogleGenAI({ apiKey: options.apiKey });
+    }
+
+    if (options.model) {
+      this.config.defaultModel = options.model;
+    }
+    this.config.provider = 'gemini';
+  }
+
+  /**
+   * Switches the AI execution provider on the fly ('ollama' | 'gemini')
+   */
+  public setProvider(provider: 'ollama' | 'gemini', model?: string): void {
+    this.config.provider = provider;
+    if (model) {
+      this.config.defaultModel = model;
+    }
   }
 
   public async executeTask(taskPrompt: string, overrideModel?: string): Promise<AgentExecutionResult> {

@@ -225,4 +225,37 @@ describe('AgentWorker & ReAct Loop (Unit Tests with Mocks)', () => {
 
     process.env.GEMINI_API_KEY = origKey;
   });
+
+  it('should allow configuring Gemini dynamically at runtime via configureGemini', async () => {
+    const worker = new AgentWorker(baseConfig, mockRegistry);
+    expect(worker.config.provider).toBeUndefined();
+
+    // 1. Configure with apiKey and model
+    worker.configureGemini({ apiKey: 'new_gemini_key', model: 'gemini-2.5-pro' });
+    expect(worker.config.provider).toBe('gemini');
+    expect(worker.config.defaultModel).toBe('gemini-2.5-pro');
+
+    // 2. Configure with custom client
+    const customClient = {
+      models: {
+        generateContent: jest.fn().mockResolvedValue({ text: 'Dynamic client output' })
+      }
+    };
+    worker.configureGemini({ client: customClient as any });
+    const dynamicRes = await worker.executeTask('Prompt dinamico');
+    expect(dynamicRes.output).toBe('Dynamic client output');
+
+    // 3. Switch back to ollama via setProvider
+    worker.setProvider('ollama', 'qwen2.5-coder:latest');
+    expect(worker.config.provider).toBe('ollama');
+    expect(worker.config.defaultModel).toBe('qwen2.5-coder:latest');
+
+    // 4. setProvider without model parameter
+    worker.setProvider('gemini');
+    expect(worker.config.provider).toBe('gemini');
+
+    // 5. configureGemini with empty options
+    worker.configureGemini({});
+    expect(worker.config.provider).toBe('gemini');
+  });
 });

@@ -106,4 +106,25 @@ describe('CompanyOrchestrator Pipelines & Parallel Dispatch (Unit Tests)', () =>
     expect(res['3_backend_developer']).toBe('');
     expect(res['3_frontend_developer']).toBe('');
   });
+
+  it('should dynamically configure Gemini on a specific worker role or all workers at any moment', () => {
+    const company = new CompanyOrchestrator();
+
+    // 1. Configure single worker
+    const ok = company.configureWorkerGemini('tech_architect', { apiKey: 'key_123', model: 'gemini-2.5-pro' });
+    expect(ok).toBe(true);
+    expect(company.getWorker('tech_architect')?.config.provider).toBe('gemini');
+    expect(company.getWorker('tech_architect')?.config.defaultModel).toBe('gemini-2.5-pro');
+
+    // Return false for non-existent role
+    const failed = company.configureWorkerGemini('ghost_role', { apiKey: 'key_123' });
+    expect(failed).toBe(false);
+
+    // 2. Configure all squad workers simultaneously
+    company.configureAllWorkersGemini({ apiKey: 'global_gemini_key', model: 'gemini-2.5-flash' });
+    for (const workerId of company.listWorkers()) {
+      expect(company.getWorker(workerId)?.config.provider).toBe('gemini');
+      expect(company.getWorker(workerId)?.config.defaultModel).toBe('gemini-2.5-flash');
+    }
+  });
 });

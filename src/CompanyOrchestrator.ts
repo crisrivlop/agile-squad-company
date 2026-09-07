@@ -126,6 +126,25 @@ export class CompanyOrchestrator {
   }
 
   /**
+   * Configures Gemini dynamically on a specific worker role at any moment.
+   */
+  public configureWorkerGemini(roleId: string, options: { apiKey?: string; model?: string }): boolean {
+    const worker = this.getWorker(roleId);
+    if (!worker) return false;
+    worker.configureGemini(options);
+    return true;
+  }
+
+  /**
+   * Configures Gemini globally across all squad workers at any moment.
+   */
+  public configureAllWorkersGemini(options: { apiKey?: string; model?: string }): void {
+    for (const worker of this.workers.values()) {
+      worker.configureGemini(options);
+    }
+  }
+
+  /**
    * Dispatches tasks to multiple agent roles concurrently in parallel using Promise.all
    */
   public async executeInParallel(
