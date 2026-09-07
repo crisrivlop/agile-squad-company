@@ -1,0 +1,31 @@
+﻿name: CI / Build & Tests (100% Coverage)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    name: TypeScript Build & 100% Coverage Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Compile TypeScript (Strict Typecheck)
+        run: npm run build
+
+      - name: Run Test Suite with Coverage
+        run: npm run test:coverage
