@@ -1,16 +1,47 @@
-﻿import { SkillRegistry } from '../../src/SkillRegistry';
+import { SkillRegistry } from '../../src/SkillRegistry';
+import * as fs from 'fs';
 import * as path from 'path';
 
-describe('SkillRegistry (Unit Tests)', () => {
-  it('should instantiate with default skills resolution', () => {
-    const registry = new SkillRegistry();
+describe('SkillRegistry Full Coverage (Unit Tests)', () => {
+  it('should instantiate with custom directory if valid', () => {
+    const customDir = path.resolve(__dirname, '../../tests');
+    const registry = new SkillRegistry(customDir);
     expect(registry).toBeDefined();
   });
 
   it('should return fallback message when skill is not found on disk', () => {
     const registry = new SkillRegistry('/non/existent/path');
     const content = registry.getSkillPrompt('non-existent-skill');
-    expect(content).toContain('[Skill non-existent-skill');
+    expect(content).toContain('[Skill non-existent-skill definition not found on disk');
+  });
+
+  it('should read skill file when it exists on disk', () => {
+    const tempDir = path.resolve(__dirname, '../../tests/temp_skills');
+    const skillFolder = path.join(tempDir, 'dummy-skill');
+    fs.mkdirSync(skillFolder, { recursive: true });
+    fs.writeFileSync(path.join(skillFolder, 'SKILL.md'), '# Dummy Skill Prompt', 'utf-8');
+
+    const registry = new SkillRegistry(tempDir);
+    const content = registry.getSkillPrompt('dummy-skill');
+    expect(content).toBe('# Dummy Skill Prompt');
+
+    // Clean up
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('should handle read error gracefully', () => {
+    const tempDir = path.resolve(__dirname, '../../tests/temp_skills_err');
+    const skillFolder = path.join(tempDir, 'faulty-skill');
+    const skillFilePath = path.join(skillFolder, 'SKILL.md');
+    // Create directory with the name SKILL.md so readFileSync throws EISDIR
+    fs.mkdirSync(skillFilePath, { recursive: true });
+
+    const registry = new SkillRegistry(tempDir);
+    const content = registry.getSkillPrompt('faulty-skill');
+    expect(content).toContain('[Error loading skill faulty-skill:');
+
+    // Clean up
+    fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('should build a structured system prompt containing role name and directives', () => {
