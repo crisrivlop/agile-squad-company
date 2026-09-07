@@ -182,8 +182,11 @@ export class CompanyOrchestrator {
    * 4. REPO INTEGRATOR (Unifying multi-repo / cross-module code and contracts)
    * 5. QA Lead (Auditing integrated suite)
    */
-  public async runParallelDevPipeline(featureRequest: string): Promise<Record<string, string>> {
-    console.log(`\n🚀 [Agile Squad Company] Starting Parallel Multi-Dev & Integration Pipeline: "${featureRequest}"\n`);
+  public async runParallelDevPipeline(
+    featureRequest: string,
+    branchingStrategy: 'Trunk-Based' | 'GitFlow' | 'GitHub-Flow' | 'GitLab-Flow' = 'GitFlow'
+  ): Promise<Record<string, string>> {
+    console.log(`\n🚀 [Agile Squad Company] Starting Parallel Multi-Dev & Integration Pipeline: "${featureRequest}" [Strategy: ${branchingStrategy}]\n`);
     const results: Record<string, string> = {};
 
     // 1. PO
@@ -226,8 +229,8 @@ export class CompanyOrchestrator {
     // 4. REPO INTEGRATOR
     const integrator = this.getWorker('repo_integrator');
     if (integrator) {
-      console.log(`🔗 [4/5] Repository & Monorepo Integrator verifying contracts and merging...`);
-      const integPrompt = `Se han desarrollado dos módulos en paralelo:\n--- BACKEND ---\n${results['3_backend_developer']}\n\n--- FRONTEND ---\n${results['3_frontend_developer']}\n\nAnaliza la integración entre ambos repositorios/paquetes. Verifica que los contratos de API coincidan, no haya incompatibilidades, y detalla el plan de unificación en el monorepo/rama de integración.`;
+      console.log(`🔗 [4/5] Repository & Monorepo Integrator verifying contracts and merging [Strategy: ${branchingStrategy}]...`);
+      const integPrompt = `Se han desarrollado dos módulos en paralelo:\n--- BACKEND ---\n${results['3_backend_developer']}\n\n--- FRONTEND ---\n${results['3_frontend_developer']}\n\nEstrategia de Branching activa: "${branchingStrategy}".\nAnaliza la integración entre ambos repositorios/paquetes. Verifica que los contratos de API coincidan, no haya incompatibilidades, y detalla el plan de ramas, merge y unificación aplicando rigurosamente las reglas de "${branchingStrategy}".`;
       const integRes = await integrator.executeTask(integPrompt);
       results['4_repo_integrator'] = integRes.output;
       console.log(`✅ Integration validation completed.\n`);
