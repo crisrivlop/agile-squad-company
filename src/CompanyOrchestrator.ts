@@ -1,18 +1,25 @@
-﻿import { AgentRoleConfig, AgentExecutionResult } from './types';
+import { AgentRoleConfig, AgentExecutionResult } from './types';
 import { SkillRegistry } from './SkillRegistry';
 import { AgentWorker } from './AgentWorker';
+import { McpClientManager } from './McpClientManager';
 
 export interface SquadSelectionOptions {
   includeRoles?: string[];
   customWorkers?: AgentRoleConfig[];
+  workspaceRoot?: string;
+  enableMcpTools?: boolean;
 }
 
 export class CompanyOrchestrator {
   private workers: Map<string, AgentWorker> = new Map();
   private skillRegistry: SkillRegistry;
+  private mcpManager?: McpClientManager;
 
   constructor(options?: SquadSelectionOptions, customSkillsDir?: string) {
     this.skillRegistry = new SkillRegistry(customSkillsDir);
+    if (options?.enableMcpTools) {
+      this.mcpManager = new McpClientManager(options.workspaceRoot);
+    }
     this.registerSquad(options);
   }
 
@@ -106,7 +113,7 @@ export class CompanyOrchestrator {
       : fullCatalog;
 
     for (const role of selectedRoles) {
-      this.workers.set(role.roleId, new AgentWorker(role, this.skillRegistry));
+      this.workers.set(role.roleId, new AgentWorker(role, this.skillRegistry, this.mcpManager));
     }
   }
 

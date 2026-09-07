@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "ts-node src/cli.ts",
     "demo": "ts-node src/demo.ts",
-    "demo:parallel": "ts-node src/demo-parallel.ts"
+    "demo:parallel": "ts-node src/demo-parallel.ts",
+    "demo:mcp": "ts-node src/demo-mcp.ts"
   },
   "keywords": [
     "ollama",
@@ -20,6 +21,8 @@
   "author": "crisrivlop",
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/server-filesystem": "^2026.8.31",
     "ollama": "^0.5.14"
   },
   "devDependencies": {
