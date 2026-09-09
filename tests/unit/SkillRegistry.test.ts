@@ -10,9 +10,12 @@ describe('SkillRegistry Full Coverage (Unit Tests)', () => {
   });
 
   it('should return fallback message when skill is not found on disk', () => {
-    const registry = new SkillRegistry('/non/existent/path');
+    const tempDir = path.resolve(__dirname, '../../tests/temp_empty_skills');
+    fs.mkdirSync(tempDir, { recursive: true });
+    const registry = new SkillRegistry(tempDir);
     const content = registry.getSkillPrompt('non-existent-skill');
     expect(content).toContain('[Skill non-existent-skill definition not found on disk');
+    fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('should read skill file when it exists on disk', () => {

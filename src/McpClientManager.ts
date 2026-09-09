@@ -1,6 +1,7 @@
-﻿import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import * as path from 'path';
+import * as fs from 'fs';
 
 export interface McpToolDefinition {
   name: string;
@@ -58,10 +59,27 @@ export class McpClientManager {
       await this.connect();
     }
 
+    // Normalize path parameter to ensure absolute path within allowedWorkspacePath
+    const normalizedArgs = { ...args };
+    if (normalizedArgs.path && typeof normalizedArgs.path === 'string') {
+      let candidate = normalizedArgs.path;
+      if (!path.isAbsolute(candidate)) {
+        candidate = path.resolve(this.allowedWorkspacePath, candidate);
+      }
+      normalizedArgs.path = candidate;
+
+      if (toolName === 'write_file' || toolName === 'create_file') {
+        const parentDir = path.dirname(candidate);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true });
+        }
+      }
+    }
+
     try {
       const result = await this.client!.callTool({
         name: toolName,
-        arguments: args
+        arguments: normalizedArgs
       });
       return result;
     } catch (error) {

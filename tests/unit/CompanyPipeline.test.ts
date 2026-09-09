@@ -34,6 +34,7 @@ describe('CompanyOrchestrator Pipelines & Parallel Dispatch (Unit Tests)', () =>
 
   it('should run full parallel dev pipeline', async () => {
     (ollama.chat as jest.Mock)
+      .mockResolvedValueOnce({ message: { role: 'assistant', content: 'R&D spike' } })
       .mockResolvedValueOnce({ message: { role: 'assistant', content: 'PO spec' } })
       .mockResolvedValueOnce({ message: { role: 'assistant', content: 'Arch design' } })
       .mockResolvedValueOnce({ message: { role: 'assistant', content: 'Backend code' } })
@@ -42,11 +43,12 @@ describe('CompanyOrchestrator Pipelines & Parallel Dispatch (Unit Tests)', () =>
       .mockResolvedValueOnce({ message: { role: 'assistant', content: 'QA test suite' } });
 
     const company = new CompanyOrchestrator({
-      includeRoles: ['product_owner', 'tech_architect', 'backend_developer', 'frontend_developer', 'repo_integrator', 'qa_lead']
+      includeRoles: ['rnd_lead', 'product_owner', 'tech_architect', 'backend_developer', 'frontend_developer', 'repo_integrator', 'qa_lead']
     });
 
     const pipelineRes = await company.runParallelDevPipeline('Nueva pasarela de pago');
 
+    expect(pipelineRes['0_rnd_lead']).toBe('R&D spike');
     expect(pipelineRes['1_product_owner']).toBe('PO spec');
     expect(pipelineRes['2_tech_architect']).toBe('Arch design');
     expect(pipelineRes['4_repo_integrator']).toBe('Integration report');
@@ -126,5 +128,18 @@ describe('CompanyOrchestrator Pipelines & Parallel Dispatch (Unit Tests)', () =>
       expect(company.getWorker(workerId)?.config.provider).toBe('gemini');
       expect(company.getWorker(workerId)?.config.defaultModel).toBe('gemini-2.5-flash');
     }
+  });
+
+  it('should update workspaceRoot and propagate to all workers on setWorkspaceRoot', () => {
+    const company = new CompanyOrchestrator({ workspaceRoot: 'C:/init/path', enableMcpTools: true });
+    expect(company.getWorkspaceRoot()).toBe('C:/init/path');
+    const worker = company.getWorker('lead_developer');
+    expect(worker?.getWorkspaceRoot()).toBe('C:/init/path');
+    expect(worker?.getSystemPrompt()).toContain('C:/init/path');
+
+    company.setWorkspaceRoot('C:/updated/path');
+    expect(company.getWorkspaceRoot()).toBe('C:/updated/path');
+    expect(worker?.getWorkspaceRoot()).toBe('C:/updated/path');
+    expect(worker?.getSystemPrompt()).toContain('C:/updated/path');
   });
 });

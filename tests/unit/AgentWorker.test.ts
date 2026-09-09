@@ -113,6 +113,26 @@ describe('AgentWorker & ReAct Loop (Unit Tests with Mocks)', () => {
     expect(result.output).toBe('No tools available');
   });
 
+  it('should execute web_search_duckduckgo tool in ReAct loop', async () => {
+    (ollama.chat as jest.Mock)
+      .mockResolvedValueOnce({
+        message: {
+          role: 'assistant',
+          content: '',
+          tool_calls: [{ function: { name: 'web_search_duckduckgo', arguments: { query: 'test query' } } }]
+        }
+      })
+      .mockResolvedValueOnce({
+        message: { role: 'assistant', content: 'Resultados encontrados' }
+      });
+
+    const worker = new AgentWorker(baseConfig, mockRegistry);
+    const result = await worker.executeTask('Busca en la web');
+
+    expect(result.success).toBe(true);
+    expect(result.output).toBe('Resultados encontrados');
+  });
+
   it('should handle tool call when tool result has no content property', async () => {
     const mockMcpNoContent = {
       getAvailableTools: jest.fn().mockResolvedValue([]),
@@ -257,5 +277,222 @@ describe('AgentWorker & ReAct Loop (Unit Tests with Mocks)', () => {
     // 5. configureGemini with empty options
     worker.configureGemini({});
     expect(worker.config.provider).toBe('gemini');
+
+    // 6. Reset back to ollama so baseConfig isn't polluted if mutated
+    worker.setProvider('ollama');
+  });
+
+  it('should include workspaceRoot in systemPrompt and update dynamically', () => {
+    const worker = new AgentWorker(baseConfig, mockRegistry, undefined, undefined, 'C:/test/workspace');
+    expect(worker.getWorkspaceRoot()).toBe('C:/test/workspace');
+    expect(worker.getSystemPrompt()).toContain('DIRECTORIO DE TRABAJO DEL PROYECTO (CWD / WORKSPACE OBLIGATORIO)');
+    expect(worker.getSystemPrompt()).toContain('C:/test/workspace');
+
+    // Update workspace dynamically
+    worker.setWorkspaceRoot('C:/another/project');
+    expect(worker.getWorkspaceRoot()).toBe('C:/another/project');
+    expect(worker.getSystemPrompt()).toContain('C:/another/project');
+  });
+
+  it('should execute consult_agent tool to query peer agents', async () => {
+    const peerWorker = new AgentWorker(
+      {
+        roleId: 'rnd_lead',
+        name: 'R&D Innovation Sentinel',
+        defaultModel: 'qwen2.5-coder:latest',
+        requiredSkills: [],
+        systemPromptBase: 'R&D prompt'
+      },
+      mockRegistry
+    );
+
+    jest.spyOn(peerWorker, 'executeTask').mockResolvedValueOnce({
+      roleId: 'rnd_lead',
+      agentName: 'R&D Innovation Sentinel',
+      modelUsed: 'qwen2.5-coder:latest',
+      success: true,
+      output: 'Usa Vite con @vitejs/plugin-react',
+      timestamp: new Date().toISOString()
+    });
+
+    const devWorker = new AgentWorker(
+      baseConfig,
+      mockRegistry,
+      undefined,
+      undefined,
+      undefined,
+      (roleId) => (roleId === 'rnd_lead' ? peerWorker : undefined)
+    );
+
+    // Mock ollama to trigger consult_agent tool call
+    (ollama.chat as jest.Mock)
+      .mockResolvedValueOnce({
+        message: {
+          role: 'assistant',
+          tool_calls: [
+            {
+              function: {
+                name: 'consult_agent',
+                arguments: { roleId: 'rnd_lead', query: 'Que bundler uso?' }
+              }
+            }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        message: { role: 'assistant', content: 'Respuesta final integrando consejo de R&D' }
+      });
+
+    const result = await devWorker.executeTask('Inicia el frontend');
+    expect(result.success).toBe(true);
+    expect(result.output).toBe('Respuesta final integrando consejo de R&D');
+    expect(peerWorker.executeTask).toHaveBeenCalledWith(
+      expect.stringContaining('Que bundler uso?'),
+      undefined,
+      expect.objectContaining({ depth: 1 })
+    );
+  });
+
+  it('should handle consult_agent when requested peer is not available', async () => {
+    const devWorker = new AgentWorker(
+      baseConfig,
+      mockRegistry,
+      undefined,
+      undefined,
+      undefined,
+      () => undefined // No peers available
+    );
+
+    (ollama.chat as jest.Mock)
+      .mockResolvedValueOnce({
+        message: {
+          role: 'assistant',
+          tool_calls: [
+            {
+              function: {
+                name: 'consult_agent',
+                arguments: { roleId: 'non_existent_role', query: 'Hola?' }
+              }
+            }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        message: { role: 'assistant', content: 'Manejo de rol ausente' }
+      });
+
+    const result = await devWorker.executeTask('Consulta a nadie');
+    expect(result.success).toBe(true);
+    expect(result.output).toBe('Manejo de rol ausente');
+  });
+
+  it('should prevent self-consultation when roleId matches the worker itself', async () => {
+    let devWorker: AgentWorker;
+    devWorker = new AgentWorker(
+      baseConfig, // roleId: 'test_dev'
+      mockRegistry,
+      undefined,
+      undefined,
+      undefined,
+      (): AgentWorker => devWorker
+    );
+
+    (ollama.chat as jest.Mock)
+      .mockResolvedValueOnce({
+        message: {
+          role: 'assistant',
+          tool_calls: [
+            {
+              function: {
+                name: 'consult_agent',
+                arguments: { roleId: 'test_dev', query: 'Auto consulta' }
+              }
+            }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        message: { role: 'assistant', content: 'Bloqueado con exito' }
+      });
+
+    const result = await devWorker.executeTask('Auto consulta');
+    expect(result.success).toBe(true);
+    expect(result.output).toBe('Bloqueado con exito');
+  });
+
+  it('should block circular consultation chain (A -> B -> A)', async () => {
+    let workerA: AgentWorker;
+    let workerB: AgentWorker;
+
+    workerA = new AgentWorker(
+      { ...baseConfig, roleId: 'worker_a', name: 'Worker A' },
+      mockRegistry,
+      undefined,
+      undefined,
+      undefined,
+      (roleId) => (roleId === 'worker_b' ? workerB : undefined)
+    );
+
+    workerB = new AgentWorker(
+      { ...baseConfig, roleId: 'worker_b', name: 'Worker B' },
+      mockRegistry,
+      undefined,
+      undefined,
+      undefined,
+      (roleId) => (roleId === 'worker_a' ? workerA : undefined)
+    );
+
+    // workerA calls workerB
+    (ollama.chat as jest.Mock)
+      .mockResolvedValueOnce({
+        message: {
+          role: 'assistant',
+          tool_calls: [
+            {
+              function: {
+                name: 'consult_agent',
+                arguments: { roleId: 'worker_b', query: 'Consulta inicial' }
+              }
+            }
+          ]
+        }
+      })
+      // workerB (at depth 1) does not have consult_agent tool available and responds directly
+      .mockResolvedValueOnce({
+        message: { role: 'assistant', content: 'Worker B respondio directamente sin delegar' }
+      })
+      // workerA receives workerB output and finishes
+      .mockResolvedValueOnce({
+        message: { role: 'assistant', content: 'Worker A finalizado con respuesta de B' }
+      });
+
+    const result = await workerA.executeTask('Inicia proceso');
+    expect(result.success).toBe(true);
+    expect(result.output).toBe('Worker A finalizado con respuesta de B');
+  });
+
+  it('should parse tool calls emitted directly in JSON text content with unclosed fences', async () => {
+    (ollama.chat as jest.Mock)
+      .mockResolvedValueOnce({
+        message: {
+          role: 'assistant',
+          content: '```json\n{"name": "write_file", "arguments": {"path": "package.json", "content": "test"}}'
+        }
+      })
+      .mockResolvedValueOnce({
+        message: { role: 'assistant', content: 'Archivo creado exitosamente' }
+      });
+
+    const mockMcp = {
+      getAvailableTools: jest.fn().mockResolvedValue([]),
+      callTool: jest.fn().mockResolvedValue({ content: 'ok' })
+    } as unknown as McpClientManager;
+
+    const worker = new AgentWorker(baseConfig, mockRegistry, mockMcp);
+    const result = await worker.executeTask('Crea package.json');
+
+    expect(result.success).toBe(true);
+    expect(mockMcp.callTool).toHaveBeenCalledWith('write_file', { path: 'package.json', content: 'test' });
+    expect(result.output).toBe('Archivo creado exitosamente');
   });
 });

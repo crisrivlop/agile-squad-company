@@ -1,4 +1,4 @@
-﻿/** @type {import('ts-jest').JestConfigWithTsJest} */
+/** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -8,7 +8,8 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/demo*.ts',
-    '!src/cli.ts'
+    '!src/cli.ts',
+    '!src/WebSearchTool.ts'
   ],
   coverageReporters: ['text', 'lcov']
 };

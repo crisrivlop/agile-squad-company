@@ -61,3 +61,48 @@ describe('McpClientManager Unit & Error Handling Tests', () => {
     expect((manager as any).allowedWorkspacePath).toBe(process.cwd());
   });
 });
+
+import { WebSearchTool } from '../../src/types';
+
+describe('WebSearchTool Unit & Robustness Tests', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('should parse search results from html successfully', async () => {
+    const mockHtml = `
+      <div class="result results_links results_links_deep web-result">
+        <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com&rut=1">Test Title</a>
+        <a class="result__snippet">Test Snippet text</a>
+      </div>
+    `;
+
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      text: async () => mockHtml
+    } as any);
+
+    const results = await WebSearchTool.searchDuckDuckGo('example query');
+    expect(results.length).toBe(1);
+    expect(results[0].title).toBe('Test Title');
+    expect(results[0].url).toBe('https://example.com');
+    expect(results[0].snippet).toBe('Test Snippet text');
+  });
+
+  it('should handle http non-ok status gracefully', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 500
+    } as any);
+
+    const results = await WebSearchTool.searchDuckDuckGo('fail query');
+    expect(results).toEqual([]);
+  });
+
+  it('should handle fetch exception gracefully', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network offline'));
+
+    const results = await WebSearchTool.searchDuckDuckGo('offline query');
+    expect(results).toEqual([]);
+  });
+});
